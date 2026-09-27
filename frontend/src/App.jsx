@@ -26,6 +26,7 @@ import NotificationsPage from './pages/notifications/NotificationsPage';
 import ProfilePage from './pages/profile/ProfilePage';
 
 // Admin Pages
+import AdminLogin from './pages/admin/AdminLogin';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminUsers from './pages/admin/AdminUsers';
 import AdminTransactions from './pages/admin/AdminTransactions';
@@ -44,6 +45,10 @@ export default function App() {
               <Route path="/register" element={<Register />} />
               <Route path="/verify-otp" element={<VerifyOTP />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
+
+              {/* Dedicated Isolated Admin Login Route */}
+              <Route path="/admin-login" element={<AdminLogin />} />
+              <Route path="/admin/login" element={<AdminLogin />} />
 
               {/* Protected User Dashboard Routes */}
               <Route

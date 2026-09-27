@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
-import { ShieldCheck, Lock, User, Eye, EyeOff, Loader2, ArrowRight, Sparkles } from 'lucide-react';
+import { ShieldCheck, Lock, User, Eye, EyeOff, Loader2, ArrowRight } from 'lucide-react';
 
 export default function Login() {
   const { login } = useAuth();
@@ -22,19 +22,20 @@ export default function Login() {
     setLoading(true);
 
     try {
-      await login(username.trim(), password);
+      const res = await login(username.trim(), password);
       showSuccess("Signed in successfully!");
-      navigate(from, { replace: true });
+
+      // If logging in as an admin through normal login, direct appropriately
+      if (res?.data?.user?.role === 'ADMIN') {
+        navigate('/admin', { replace: true });
+      } else {
+        navigate(from, { replace: true });
+      }
     } catch (err) {
       showError(err.message || "Invalid credentials.");
     } finally {
       setLoading(false);
     }
-  };
-
-  const fillQuickCredentials = (u, p) => {
-    setUsername(u);
-    setPassword(p);
   };
 
   return (
@@ -119,47 +120,6 @@ export default function Login() {
               {!loading && <ArrowRight className="w-4 h-4" />}
             </button>
           </form>
-
-          {/* Quick Demo Credentials */}
-          <div className="mt-6 pt-5 border-t border-slate-200/80 dark:border-slate-800/80">
-            <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2.5 flex items-center gap-1">
-              <Sparkles className="w-3 h-3 text-amber-400" /> Quick Demo Accounts
-            </div>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <button
-                type="button"
-                onClick={() => fillQuickCredentials('rahul', 'Password@123')}
-                className="p-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800/60 text-left transition-colors"
-              >
-                <div className="font-bold text-slate-800 dark:text-slate-200">Rahul (User)</div>
-                <div className="text-[10px] text-slate-400">₹12,500 balance</div>
-              </button>
-              <button
-                type="button"
-                onClick={() => fillQuickCredentials('priya', 'Password@123')}
-                className="p-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800/60 text-left transition-colors"
-              >
-                <div className="font-bold text-slate-800 dark:text-slate-200">Priya (User)</div>
-                <div className="text-[10px] text-slate-400">₹8,400 balance</div>
-              </button>
-              <button
-                type="button"
-                onClick={() => fillQuickCredentials('vikram', 'Password@123')}
-                className="p-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800/60 text-left transition-colors"
-              >
-                <div className="font-bold text-slate-800 dark:text-slate-200">Vikram (User)</div>
-                <div className="text-[10px] text-slate-400">₹4,200 balance</div>
-              </button>
-              <button
-                type="button"
-                onClick={() => fillQuickCredentials('admin', 'Admin@12345')}
-                className="p-2 rounded-xl border border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/20 text-left transition-colors"
-              >
-                <div className="font-bold text-purple-600 dark:text-purple-300">Admin Portal</div>
-                <div className="text-[10px] text-purple-400">Full System Control</div>
-              </button>
-            </div>
-          </div>
 
           <div className="mt-6 text-center text-xs text-slate-500 dark:text-slate-400">
             Don't have an account?{' '}
