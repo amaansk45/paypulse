@@ -2,16 +2,30 @@ import React, { useState } from 'react';
 import Modal from '../common/Modal';
 import api from '../../api/client';
 import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../../context/AuthContext';
 import { CreditCard, Smartphone, Building, ShieldCheck, CheckCircle2, Loader2, Sparkles } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import PaymentStatusModal from '../payments/PaymentStatusModal';
 
 export default function AddMoneyModal({ isOpen, onClose, onSuccess }) {
   const { showSuccess, showError } = useToast();
+  const { refreshUser } = useAuth();
   const [step, setStep] = useState(1); // 1: Input amount & method, 2: Gateway checkout
   const [amount, setAmount] = useState('1000');
   const [method, setMethod] = useState('CARD');
   const [loading, setLoading] = useState(false);
   const [orderData, setOrderData] = useState(null);
+
+  // Status Animation Modal State
+  const [statusModal, setStatusModal] = useState({
+    isOpen: false,
+    status: 'success', // 'success' | 'failed'
+    amount: '',
+    recipient: '',
+    note: '',
+    transactionId: '',
+    errorMessage: '',
+  });
 
   const quickAmounts = ['500', '1000', '2500', '5000'];
 
@@ -55,6 +69,8 @@ export default function AddMoneyModal({ isOpen, onClose, onSuccess }) {
 
   const handleSimulatePayment = async () => {
     setLoading(true);
+    const sentAmount = parseFloat(amount).toFixed(2);
+
     try {
       const res = await api.post('/api/wallet/add-money/sandbox-mock/', {
         transaction_id: orderData.transaction_id,
@@ -63,30 +79,47 @@ export default function AddMoneyModal({ isOpen, onClose, onSuccess }) {
       });
 
       if (res.data?.success) {
-        // Trigger celebratory confetti
-        confetti({
-          particleCount: 80,
-          spread: 70,
-          origin: { y: 0.6 }
-        });
-
-        showSuccess(`Success! ₹${amount} added to your digital wallet.`);
+        showSuccess(`Success! ₹${sentAmount} added to your digital wallet.`);
+        if (refreshUser) refreshUser();
         if (onSuccess) onSuccess();
-        handleClose();
+
+        // Show Success Right Tick Modal with Voice Announcement!
+        setStatusModal({
+          isOpen: true,
+          status: 'success',
+          amount: sentAmount,
+          recipient: 'Wallet Top-Up',
+          note: `Gateway deposit via ${method}`,
+          transactionId: res.data.data?.transaction_id || orderData.transaction_id,
+          errorMessage: '',
+        });
       }
     } catch (err) {
-      showError(err.response?.data?.message || "Payment simulation failed.");
+      const msg = err.response?.data?.message || err.message || "Payment simulation failed.";
+      showError(msg);
+
+      // Show Failed Wrong Tick Modal (NO VOICE!)
+      setStatusModal({
+        isOpen: true,
+        status: 'failed',
+        amount: sentAmount,
+        recipient: 'Wallet Deposit',
+        note: '',
+        transactionId: '',
+        errorMessage: msg,
+      });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={handleClose}
-      title={step === 1 ? "Top Up Digital Wallet" : "Sandbox Gateway Checkout"}
-    >
+    <>
+      <Modal
+        isOpen={isOpen && !statusModal.isOpen}
+        onClose={handleClose}
+        title={step === 1 ? "Top Up Digital Wallet" : "Sandbox Gateway Checkout"}
+      >
       {step === 1 ? (
         <form onSubmit={handleInitiate} className="space-y-5">
           <div>
@@ -227,5 +260,28 @@ export default function AddMoneyModal({ isOpen, onClose, onSuccess }) {
         </div>
       )}
     </Modal>
+
+    {/* Payment Status Modal (Right Tick + Voice on Success, Wrong Tick on Failure) */}
+    <PaymentStatusModal
+      isOpen={statusModal.isOpen}
+      status={statusModal.status}
+      amount={statusModal.amount}
+      recipient={statusModal.recipient}
+      note={statusModal.note}
+      transactionId={statusModal.transactionId}
+      errorMessage={statusModal.errorMessage}
+      onClose={() => {
+        const wasSuccess = statusModal.status === 'success';
+        setStatusModal((prev) => ({ ...prev, isOpen: false }));
+        if (wasSuccess) {
+          handleClose();
+        }
+      }}
+      onRetry={() => {
+        setStatusModal((prev) => ({ ...prev, isOpen: false }));
+        setStep(2);
+      }}
+    />
+  </>
   );
 }

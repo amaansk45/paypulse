@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../api/client';
 import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../../context/AuthContext';
 import RequestMoneyModal from '../../components/payments/RequestMoneyModal';
+import PaymentStatusModal from '../../components/payments/PaymentStatusModal';
 import { 
   ArrowDownLeft, 
   ArrowUpRight, 
@@ -10,17 +12,29 @@ import {
   XCircle, 
   Clock, 
   Check, 
-  X,
+  X, 
   Loader2
 } from 'lucide-react';
 
 export default function RequestsPage() {
   const { showSuccess, showError } = useToast();
+  const { refreshUser } = useAuth();
   const [tab, setTab] = useState('incoming'); // 'incoming' | 'outgoing'
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [actionLoading, setActionLoading] = useState(null);
+
+  // Status Animation Modal State
+  const [statusModal, setStatusModal] = useState({
+    isOpen: false,
+    status: 'success', // 'success' | 'failed'
+    amount: '',
+    recipient: '',
+    note: '',
+    transactionId: '',
+    errorMessage: '',
+  });
 
   const fetchRequests = async () => {
     setLoading(true);
@@ -40,16 +54,43 @@ export default function RequestsPage() {
     fetchRequests();
   }, [tab]);
 
-  const handleAccept = async (requestId) => {
-    setActionLoading(requestId);
+  const handleAccept = async (reqItem) => {
+    setActionLoading(reqItem.request_id);
+    const amount = parseFloat(reqItem.amount).toFixed(2);
+    const requester = reqItem.requester?.username || 'User';
+
     try {
-      const res = await api.post(`/api/payments/request/${requestId}/accept/`);
+      const res = await api.post(`/api/payments/request/${reqItem.request_id}/accept/`);
       if (res.data?.success) {
-        showSuccess("Payment request accepted and settled!");
+        showSuccess(`Paid ₹${amount} to @${requester}!`);
+        if (refreshUser) refreshUser();
         fetchRequests();
+
+        // Show Success Right Tick Modal with Voice Announcement!
+        setStatusModal({
+          isOpen: true,
+          status: 'success',
+          amount: amount,
+          recipient: requester,
+          note: reqItem.note || 'Settled Payment Request',
+          transactionId: res.data.data?.transaction_id || '',
+          errorMessage: '',
+        });
       }
     } catch (err) {
-      showError(err.response?.data?.message || "Failed to accept request.");
+      const msg = err.response?.data?.message || err.message || "Failed to accept request.";
+      showError(msg);
+
+      // Show Failed Wrong Tick Modal (NO VOICE!)
+      setStatusModal({
+        isOpen: true,
+        status: 'failed',
+        amount: amount,
+        recipient: requester,
+        note: '',
+        transactionId: '',
+        errorMessage: msg,
+      });
     } finally {
       setActionLoading(null);
     }
@@ -190,7 +231,7 @@ export default function RequestsPage() {
                         <X className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => handleAccept(req.request_id)}
+                        onClick={() => handleAccept(req)}
                         disabled={actionLoading === req.request_id}
                         className="py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-600/30 flex items-center gap-1.5 transition-all"
                       >
@@ -210,6 +251,18 @@ export default function RequestsPage() {
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         onSuccess={fetchRequests}
+      />
+
+      {/* Payment Status Modal (Right Tick + Voice on Success, Wrong Tick on Failure) */}
+      <PaymentStatusModal
+        isOpen={statusModal.isOpen}
+        status={statusModal.status}
+        amount={statusModal.amount}
+        recipient={statusModal.recipient}
+        note={statusModal.note}
+        transactionId={statusModal.transactionId}
+        errorMessage={statusModal.errorMessage}
+        onClose={() => setStatusModal((prev) => ({ ...prev, isOpen: false }))}
       />
     </div>
   );

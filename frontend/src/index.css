@@ -59,3 +59,131 @@
 .dark ::-webkit-scrollbar-thumb:hover {
   background: #475569;
 }
+
+/* Payment Success & Failure Tick Animations */
+@keyframes circle-draw {
+  0% {
+    stroke-dashoffset: 283;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes check-draw {
+  0% {
+    stroke-dashoffset: 60;
+    opacity: 0;
+  }
+  40% {
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
+
+@keyframes cross-draw-1 {
+  0% {
+    stroke-dashoffset: 50;
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
+
+@keyframes cross-draw-2 {
+  0% {
+    stroke-dashoffset: 50;
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
+
+@keyframes pop-bounce {
+  0% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.15);
+  }
+  80% {
+    transform: scale(0.95);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes shake-wobble {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  15%, 45%, 75% {
+    transform: translateX(-7px);
+  }
+  30%, 60%, 90% {
+    transform: translateX(7px);
+  }
+}
+
+@keyframes wave-pulse {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.8;
+  }
+  60% {
+    transform: scale(1.4);
+    opacity: 0.15;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+.animate-circle-draw {
+  stroke-dasharray: 283;
+  animation: circle-draw 0.75s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+}
+
+.animate-check-draw {
+  stroke-dasharray: 60;
+  animation: check-draw 0.55s cubic-bezier(0.65, 0, 0.45, 1) 0.35s forwards;
+}
+
+.animate-cross-1 {
+  stroke-dasharray: 50;
+  animation: cross-draw-1 0.45s cubic-bezier(0.65, 0, 0.45, 1) 0.25s forwards;
+}
+
+.animate-cross-2 {
+  stroke-dasharray: 50;
+  animation: cross-draw-2 0.45s cubic-bezier(0.65, 0, 0.45, 1) 0.45s forwards;
+}
+
+.animate-pop-bounce {
+  animation: pop-bounce 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.animate-shake-wobble {
+  animation: shake-wobble 0.6s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+.animate-wave-pulse {
+  animation: wave-pulse 2s ease-out infinite;
+}

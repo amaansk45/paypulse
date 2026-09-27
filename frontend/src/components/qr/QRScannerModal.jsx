@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Modal from '../common/Modal';
 import api from '../../api/client';
 import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../../context/AuthContext';
 import { Html5Qrcode } from 'html5-qrcode';
 import { 
   ScanLine, 
@@ -15,9 +16,11 @@ import {
   AlertCircle
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import PaymentStatusModal from '../payments/PaymentStatusModal';
 
 export default function QRScannerModal({ isOpen, onClose, onSuccess }) {
   const { showSuccess, showError } = useToast();
+  const { refreshUser } = useAuth();
   const [activeTab, setActiveTab] = useState('camera'); // 'camera' | 'paste' | 'file'
   const [manualCode, setManualCode] = useState('');
   const [isScanning, setIsScanning] = useState(false);
@@ -28,6 +31,17 @@ export default function QRScannerModal({ isOpen, onClose, onSuccess }) {
   const [amount, setAmount] = useState('');
   const [pin, setPin] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Payment Status Animation Modal State
+  const [statusModal, setStatusModal] = useState({
+    isOpen: false,
+    status: 'success', // 'success' | 'failed'
+    amount: '',
+    recipient: '',
+    note: '',
+    transactionId: '',
+    errorMessage: '',
+  });
 
   const qrRegionId = "html5qr-code-full-region";
   const html5QrCodeRef = useRef(null);
@@ -122,26 +136,46 @@ export default function QRScannerModal({ isOpen, onClose, onSuccess }) {
     }
 
     setLoading(true);
+    const sentAmount = parseFloat(amount).toFixed(2);
+    const recipientUser = validatedData.recipient?.username || 'Merchant';
+
     try {
       const res = await api.post('/api/qr/pay/', {
         qr_data: validatedData.payment_identifier,
-        amount: parseFloat(amount).toFixed(2),
+        amount: sentAmount,
         pin: pin.trim()
       });
 
       if (res.data?.success) {
-        confetti({
-          particleCount: 80,
-          spread: 70,
-          origin: { y: 0.6 }
-        });
-
-        showSuccess(`Paid ₹${amount} to ${validatedData.recipient.username} via QR!`);
+        showSuccess(`Paid ₹${sentAmount} to ${recipientUser} via QR!`);
+        if (refreshUser) refreshUser();
         if (onSuccess) onSuccess(res.data.data);
-        handleClose();
+
+        // Show Success Right Tick Modal with Voice Announcement!
+        setStatusModal({
+          isOpen: true,
+          status: 'success',
+          amount: sentAmount,
+          recipient: recipientUser,
+          note: validatedData.description || 'QR Payment',
+          transactionId: res.data.data?.transaction_id || '',
+          errorMessage: '',
+        });
       }
     } catch (err) {
-      showError(err.response?.data?.message || "QR payment failed.");
+      const msg = err.response?.data?.message || err.message || "QR payment failed.";
+      showError(msg);
+
+      // Show Failed Wrong Tick Modal (NO VOICE!)
+      setStatusModal({
+        isOpen: true,
+        status: 'failed',
+        amount: sentAmount,
+        recipient: recipientUser,
+        note: '',
+        transactionId: '',
+        errorMessage: msg,
+      });
     } finally {
       setLoading(false);
     }
@@ -163,7 +197,8 @@ export default function QRScannerModal({ isOpen, onClose, onSuccess }) {
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title={validatedData ? "Confirm QR Payment" : "Scan & Pay"}>
+    <>
+      <Modal isOpen={isOpen && !statusModal.isOpen} onClose={handleClose} title={validatedData ? "Confirm QR Payment" : "Scan & Pay"}>
       {!validatedData ? (
         <div className="space-y-4">
           {/* Tabs */}
@@ -342,5 +377,28 @@ export default function QRScannerModal({ isOpen, onClose, onSuccess }) {
         </form>
       )}
     </Modal>
+
+    {/* Payment Status Modal (Right Tick + Voice on Success, Wrong Tick on Failure) */}
+    <PaymentStatusModal
+      isOpen={statusModal.isOpen}
+      status={statusModal.status}
+      amount={statusModal.amount}
+      recipient={statusModal.recipient}
+      note={statusModal.note}
+      transactionId={statusModal.transactionId}
+      errorMessage={statusModal.errorMessage}
+      onClose={() => {
+        const wasSuccess = statusModal.status === 'success';
+        setStatusModal((prev) => ({ ...prev, isOpen: false }));
+        if (wasSuccess) {
+          handleClose();
+        }
+      }}
+      onRetry={() => {
+        setStatusModal((prev) => ({ ...prev, isOpen: false }));
+        setPin('');
+      }}
+    />
+  </>
   );
 }

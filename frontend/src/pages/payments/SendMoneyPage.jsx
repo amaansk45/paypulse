@@ -3,6 +3,7 @@ import api from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import ReceiptModal from '../../components/payments/ReceiptModal';
+import PaymentStatusModal from '../../components/payments/PaymentStatusModal';
 import { Send, UserCheck, ShieldCheck, Lock, ArrowRight, Loader2, Sparkles } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -18,6 +19,18 @@ export default function SendMoneyPage() {
   const [loading, setLoading] = useState(false);
   const [recipientInfo, setRecipientInfo] = useState(null);
   const [receipt, setSelectedReceipt] = useState(null);
+
+  // Status Animation Modal State
+  const [statusModal, setStatusModal] = useState({
+    isOpen: false,
+    status: 'success', // 'success' | 'failed'
+    amount: '',
+    recipient: '',
+    note: '',
+    transactionId: '',
+    errorMessage: '',
+    receiptData: null,
+  });
 
   const handleVerifyRecipient = async (e) => {
     e.preventDefault();
@@ -42,28 +55,46 @@ export default function SendMoneyPage() {
   const handleExecuteSend = async (e) => {
     e.preventDefault();
     setLoading(true);
+    const sentAmount = parseFloat(amount).toFixed(2);
+    const sentRecipient = recipient.trim();
+    const sentNote = note.trim();
+
     try {
       const res = await api.post('/api/payments/send/', {
-        recipient: recipient.trim(),
-        amount: parseFloat(amount).toFixed(2),
-        note: note.trim(),
+        recipient: sentRecipient,
+        amount: sentAmount,
+        note: sentNote,
         pin: pin.trim()
       });
 
       if (res.data?.success) {
-        confetti({
-          particleCount: 80,
-          spread: 70,
-          origin: { y: 0.6 }
-        });
-        showSuccess(`Transferred ₹${amount} to @${recipient}!`);
-        refreshUser();
+        showSuccess(`Transferred ₹${sentAmount} to @${sentRecipient}!`);
+        if (refreshUser) refreshUser();
+
         // Load receipt
-        const recRes = await api.get(`/api/transactions/${res.data.data.transaction_id}/receipt/`);
-        if (recRes.data?.success) {
-          setSelectedReceipt(recRes.data.data);
+        let receiptPayload = null;
+        try {
+          const recRes = await api.get(`/api/transactions/${res.data.data.transaction_id}/receipt/`);
+          if (recRes.data?.success) {
+            receiptPayload = recRes.data.data;
+          }
+        } catch (e) {
+          // ignore receipt fetch error
         }
-        // Reset
+
+        // Show Success Right Tick Modal with Voice Announcement!
+        setStatusModal({
+          isOpen: true,
+          status: 'success',
+          amount: sentAmount,
+          recipient: sentRecipient,
+          note: sentNote,
+          transactionId: res.data.data?.transaction_id || '',
+          errorMessage: '',
+          receiptData: receiptPayload,
+        });
+
+        // Reset inputs
         setRecipient('');
         setAmount('');
         setNote('');
@@ -71,7 +102,20 @@ export default function SendMoneyPage() {
         setStep(1);
       }
     } catch (err) {
-      showError(err.response?.data?.message || "Failed to complete transfer.");
+      const msg = err.response?.data?.message || err.message || "Failed to complete transfer.";
+      showError(msg);
+
+      // Show Failed Wrong Tick Modal (NO VOICE!)
+      setStatusModal({
+        isOpen: true,
+        status: 'failed',
+        amount: sentAmount,
+        recipient: sentRecipient,
+        note: sentNote,
+        transactionId: '',
+        errorMessage: msg,
+        receiptData: null,
+      });
     } finally {
       setLoading(false);
     }
@@ -216,6 +260,30 @@ export default function SendMoneyPage() {
         isOpen={!!receipt}
         onClose={() => setSelectedReceipt(null)}
         receipt={receipt}
+      />
+
+      {/* Payment Status Modal (Right Tick + Voice on Success, Wrong Tick on Failure) */}
+      <PaymentStatusModal
+        isOpen={statusModal.isOpen}
+        status={statusModal.status}
+        amount={statusModal.amount}
+        recipient={statusModal.recipient}
+        note={statusModal.note}
+        transactionId={statusModal.transactionId}
+        errorMessage={statusModal.errorMessage}
+        onClose={() => setStatusModal((prev) => ({ ...prev, isOpen: false }))}
+        onRetry={() => {
+          setStatusModal((prev) => ({ ...prev, isOpen: false }));
+          setPin('');
+          setStep(2);
+        }}
+        onViewReceipt={
+          statusModal.receiptData
+            ? () => {
+                setSelectedReceipt(statusModal.receiptData);
+              }
+            : null
+        }
       />
     </div>
   );
