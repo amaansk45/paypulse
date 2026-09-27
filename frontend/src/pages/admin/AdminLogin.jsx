@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
-import { ShieldAlert, ShieldCheck, Lock, User, Eye, EyeOff, Loader2, ArrowRight, KeyRound } from 'lucide-react';
+import { ShieldAlert, ShieldCheck, Lock, User, Eye, EyeOff, Loader2, ArrowRight, KeyRound, Server, AlertCircle } from 'lucide-react';
+import { getApiBaseUrl } from '../../api/client';
+import ServerConfigModal from '../../components/common/ServerConfigModal';
 
 export default function AdminLogin() {
   const { login, logout } = useAuth();
@@ -13,6 +15,9 @@ export default function AdminLogin() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showServerModal, setShowServerModal] = useState(false);
+  const [serverError, setServerError] = useState('');
+  const [currentApiUrl, setCurrentApiUrl] = useState(getApiBaseUrl());
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -32,6 +37,9 @@ export default function AdminLogin() {
       showSuccess("Welcome, Administrator. Security session initiated.");
       navigate('/admin', { replace: true });
     } catch (err) {
+      if (err.isNetworkError) {
+        setServerError(err.message);
+      }
       showError(err.message || "Admin authorization failed.");
     } finally {
       setLoading(false);
@@ -71,6 +79,24 @@ export default function AdminLogin() {
           <p className="text-xs text-slate-400 mb-6">
             Enter administrative credentials to access ledger management and oversight tools.
           </p>
+
+          {/* Server Error Banner */}
+          {serverError && (
+            <div className="mb-5 p-4 rounded-2xl bg-rose-950/60 border border-rose-800/60 text-xs text-rose-200 flex flex-col gap-2.5">
+              <div className="flex items-start gap-2.5">
+                <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
+                <span className="leading-relaxed font-medium">{serverError}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowServerModal(true)}
+                className="self-start text-xs font-bold px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white transition-all shadow-sm active:scale-95 flex items-center gap-1.5"
+              >
+                <Server className="w-3.5 h-3.5" />
+                Configure Backend URL
+              </button>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -141,8 +167,36 @@ export default function AdminLogin() {
               Go to User Login
             </Link>
           </div>
+
+          {/* Server Config Trigger */}
+          <div className="mt-6 pt-4 border-t border-purple-900/40 flex items-center justify-between text-[11px] text-slate-400">
+            <span className="flex items-center gap-1.5 truncate max-w-[240px]">
+              <span className={`w-2 h-2 rounded-full flex-shrink-0 ${currentApiUrl ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+              <span className="truncate">
+                API: <span className="font-mono text-purple-300">{currentApiUrl || 'Not configured'}</span>
+              </span>
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowServerModal(true)}
+              className="text-purple-400 hover:text-purple-300 hover:underline font-semibold flex items-center gap-1 flex-shrink-0 ml-2"
+            >
+              <Server className="w-3 h-3" />
+              Settings
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* Backend Server Configuration Modal */}
+      <ServerConfigModal
+        isOpen={showServerModal}
+        onClose={() => setShowServerModal(false)}
+        onSave={(newUrl) => {
+          setCurrentApiUrl(newUrl);
+          setServerError('');
+        }}
+      />
     </div>
   );
 }

@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
-import { ShieldCheck, Lock, User, Eye, EyeOff, Loader2, ArrowRight } from 'lucide-react';
+import { ShieldCheck, Lock, User, Eye, EyeOff, Loader2, ArrowRight, Server, AlertCircle } from 'lucide-react';
+import { getApiBaseUrl } from '../../api/client';
+import ServerConfigModal from '../../components/common/ServerConfigModal';
 
 export default function Login() {
   const { login } = useAuth();
@@ -14,12 +16,16 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showServerModal, setShowServerModal] = useState(false);
+  const [serverError, setServerError] = useState('');
+  const [currentApiUrl, setCurrentApiUrl] = useState(getApiBaseUrl());
 
   const from = location.state?.from?.pathname || '/dashboard';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setServerError('');
 
     try {
       const res = await login(username.trim(), password);
@@ -32,6 +38,9 @@ export default function Login() {
         navigate(from, { replace: true });
       }
     } catch (err) {
+      if (err.isNetworkError) {
+        setServerError(err.message);
+      }
       showError(err.message || "Invalid credentials.");
     } finally {
       setLoading(false);
@@ -60,6 +69,24 @@ export default function Login() {
           <p className="text-xs text-slate-500 dark:text-slate-400 mb-6">
             Enter your credentials to access your secure digital wallet.
           </p>
+
+          {/* Unreachable/Disconnected Server Banner */}
+          {serverError && (
+            <div className="mb-5 p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/50 text-xs text-rose-800 dark:text-rose-200 flex flex-col gap-2.5">
+              <div className="flex items-start gap-2.5">
+                <AlertCircle className="w-4 h-4 text-rose-500 flex-shrink-0 mt-0.5" />
+                <span className="leading-relaxed font-medium">{serverError}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowServerModal(true)}
+                className="self-start text-xs font-bold px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white transition-all shadow-sm active:scale-95 flex items-center gap-1.5"
+              >
+                <Server className="w-3.5 h-3.5" />
+                Connect Backend URL
+              </button>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -127,8 +154,36 @@ export default function Login() {
               Create Account
             </Link>
           </div>
+
+          {/* Server Config Trigger */}
+          <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
+            <span className="flex items-center gap-1.5 truncate max-w-[240px]">
+              <span className={`w-2 h-2 rounded-full flex-shrink-0 ${currentApiUrl ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+              <span className="truncate">
+                API: <span className="font-mono text-slate-600 dark:text-slate-300">{currentApiUrl || 'Not configured'}</span>
+              </span>
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowServerModal(true)}
+              className="text-brand-600 dark:text-brand-400 hover:underline font-semibold flex items-center gap-1 flex-shrink-0 ml-2"
+            >
+              <Server className="w-3 h-3" />
+              Settings
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* Backend Server Configuration Modal */}
+      <ServerConfigModal
+        isOpen={showServerModal}
+        onClose={() => setShowServerModal(false)}
+        onSave={(newUrl) => {
+          setCurrentApiUrl(newUrl);
+          setServerError('');
+        }}
+      />
     </div>
   );
 }

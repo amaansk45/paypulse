@@ -172,6 +172,16 @@ CORS_ALLOWED_ORIGIN_REGEXES = [
     r"^http://localhost:[0-9]+$",
     r"^http://127.0.0.1:[0-9]+$",
 ]
+CSRF_TRUSTED_ORIGINS = [
+    'https://*.vercel.app',
+    'https://*.onrender.com',
+    'https://*.pinggy.link',
+    'https://*.loca.lt',
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+]
 
 # Security policies & Sandbox Payment Gateway Credentials
 PAYMENT_GATEWAY_KEY = os.getenv('PAYMENT_GATEWAY_KEY', 'sandbox_pk_paypulse_test_992147')

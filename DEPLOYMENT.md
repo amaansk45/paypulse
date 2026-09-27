@@ -97,9 +97,65 @@ Since Django uses relational databases and JWT tokens, running the backend with 
 
 ---
 
+## 🛠️ How to Fix "Network Error" on Vercel
+
+If you deploy your frontend to Vercel and see a red **"Network Error"** notification on login:
+
+### Why this happens:
+1. **Frontend is in Cloud (HTTPS):** Your Vercel web app runs at `https://paypulse-...vercel.app`.
+2. **Backend is Local or Missing:** By default, your Django backend was running on `http://127.0.0.1:8000` on your laptop. Modern web browsers block `https://` websites from calling `http://` URLs (Mixed Content security policy).
+3. **Missing `VITE_API_URL`:** Vercel was not told where your live backend API server is located.
+
+---
+
+### Solution 1: Instant 1-Minute HTTPS Tunnel (Test with your local DB right now)
+
+You can instantly expose your local Django server over a secure HTTPS URL without cloud setup:
+
+1. Keep your Django server running on port 8000:
+   ```bash
+   python backend/manage.py runserver 0.0.0.0:8000
+   ```
+2. Open a new PowerShell terminal and run:
+   ```bash
+   npx localtunnel --port 8000
+   ```
+   *(or run `ssh -p 443 -R0:localhost:8000 a.pinggy.io`)*
+3. Copy the generated HTTPS URL (e.g., `https://cold-foxes-jump.loca.lt` or `https://xyz.a.pinggy.link`).
+4. On your Vercel website:
+   - Click the **"Settings"** link next to `Server:` at the bottom of the Login card.
+   - Paste your tunnel URL.
+   - Click **"Test Connection"** (verifies with `/api/health/`), then click **"Save & Apply"**.
+5. You can now immediately sign in from Vercel!
+
+---
+
+### Solution 2: Permanent 24/7 Cloud Backend on Render.com (100% Free)
+
+To keep your backend online 24/7 even when your laptop is turned off:
+
+1. Go to [Render.com](https://render.com) and create a free account.
+2. Click **New +** > **Web Service**.
+3. Select your GitHub repository: `amaansk45/paypulse`.
+4. Configure:
+   - **Root Directory:** `backend`
+   - **Environment:** `Python 3`
+   - **Build Command:** `pip install -r requirements.txt && python manage.py migrate`
+   - **Start Command:** `gunicorn config.wsgi:application`
+5. Copy your Render service URL (e.g., `https://paypulse-api.onrender.com`).
+6. In **Vercel Dashboard**:
+   - Go to your Project > **Settings** > **Environment Variables**.
+   - Add variable:
+     - **Key:** `VITE_API_URL`
+     - **Value:** `https://paypulse-api.onrender.com`
+   - Go to **Deployments** tab and click **Redeploy** on your latest build.
+
+---
+
 ## Configuration Files Added to Project
 
 * [**`frontend/vercel.json`**](file:///d:/Payment%20app/frontend/vercel.json): SPA rewrite rules and HTTP caching headers.
 * [**`Procfile`**](file:///d:/Payment%20app/Procfile): WSGI production server start command for Gunicorn.
 * [**`backend/requirements.txt`**](file:///d:/Payment%20app/backend/requirements.txt): Updated with `gunicorn`, `whitenoise`, and `dj-database-url`.
 * [**`backend/config/wsgi.py`**](file:///d:/Payment%20app/backend/config/wsgi.py): Configured with `app = application` WSGI entry point.
+* [**`frontend/src/components/common/ServerConfigModal.jsx`**](file:///d:/Payment%20app/frontend/src/components/common/ServerConfigModal.jsx): In-app UI server connector for testing & setting custom API endpoints.

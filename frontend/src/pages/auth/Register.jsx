@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
-import { ShieldCheck, Lock, User, Mail, Phone, Eye, EyeOff, Loader2, ArrowRight, AlertCircle } from 'lucide-react';
+import { ShieldCheck, Lock, User, Mail, Phone, Eye, EyeOff, Loader2, ArrowRight, AlertCircle, Server } from 'lucide-react';
+import { getApiBaseUrl } from '../../api/client';
+import ServerConfigModal from '../../components/common/ServerConfigModal';
 
 export default function Register() {
   const { register } = useAuth();
@@ -20,6 +22,8 @@ export default function Register() {
   const [generalError, setGeneralError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showServerModal, setShowServerModal] = useState(false);
+  const [currentApiUrl, setCurrentApiUrl] = useState(getApiBaseUrl());
 
   const calculateStrength = (pwd) => {
     let score = 0;
@@ -127,9 +131,21 @@ export default function Register() {
 
           {/* Alert error box if general error */}
           {generalError && (
-            <div className="mb-4 p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs flex items-start gap-2.5 animate-fadeIn">
-              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-              <div className="flex-1 font-medium">{generalError}</div>
+            <div className="mb-4 p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs flex flex-col gap-2 animate-fadeIn">
+              <div className="flex items-start gap-2.5">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                <div className="flex-1 font-medium leading-relaxed">{generalError}</div>
+              </div>
+              {generalError.toLowerCase().includes('backend') && (
+                <button
+                  type="button"
+                  onClick={() => setShowServerModal(true)}
+                  className="self-start text-xs font-bold px-3 py-1 rounded-xl bg-rose-600 hover:bg-rose-500 text-white transition-all shadow-sm active:scale-95 flex items-center gap-1.5"
+                >
+                  <Server className="w-3 h-3" />
+                  Configure Backend URL
+                </button>
+              )}
             </div>
           )}
 
@@ -323,8 +339,36 @@ export default function Register() {
               Sign In
             </Link>
           </div>
+
+          {/* Server Config Trigger */}
+          <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
+            <span className="flex items-center gap-1.5 truncate max-w-[240px]">
+              <span className={`w-2 h-2 rounded-full flex-shrink-0 ${currentApiUrl ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+              <span className="truncate">
+                API: <span className="font-mono text-slate-600 dark:text-slate-300">{currentApiUrl || 'Not configured'}</span>
+              </span>
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowServerModal(true)}
+              className="text-brand-600 dark:text-brand-400 hover:underline font-semibold flex items-center gap-1 flex-shrink-0 ml-2"
+            >
+              <Server className="w-3 h-3" />
+              Settings
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* Backend Server Configuration Modal */}
+      <ServerConfigModal
+        isOpen={showServerModal}
+        onClose={() => setShowServerModal(false)}
+        onSave={(newUrl) => {
+          setCurrentApiUrl(newUrl);
+          setGeneralError('');
+        }}
+      />
     </div>
   );
 }
