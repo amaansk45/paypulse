@@ -36,29 +36,45 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login = async (username, password) => {
-    const res = await api.post('/api/auth/login/', { username, password });
-    if (res.data?.success) {
-      const { user: userData, tokens } = res.data.data;
-      localStorage.setItem('paypulse_access_token', tokens.access);
-      localStorage.setItem('paypulse_refresh_token', tokens.refresh);
-      localStorage.setItem('paypulse_user', JSON.stringify(userData));
-      setUser(userData);
-      return res.data;
+    try {
+      const res = await api.post('/api/auth/login/', { username, password });
+      if (res.data?.success) {
+        const { user: userData, tokens } = res.data.data;
+        localStorage.setItem('paypulse_access_token', tokens.access);
+        localStorage.setItem('paypulse_refresh_token', tokens.refresh);
+        localStorage.setItem('paypulse_user', JSON.stringify(userData));
+        setUser(userData);
+        return res.data;
+      }
+      throw new Error(res.data?.message || 'Login failed.');
+    } catch (err) {
+      const message = err.response?.data?.message || err.message || 'Login failed.';
+      const customErr = new Error(message);
+      customErr.response = err.response;
+      customErr.errors = err.response?.data?.errors;
+      throw customErr;
     }
-    throw new Error(res.data?.message || 'Login failed.');
   };
 
   const register = async (registerData) => {
-    const res = await api.post('/api/auth/register/', registerData);
-    if (res.data?.success) {
-      const { user: userData, tokens } = res.data.data;
-      localStorage.setItem('paypulse_access_token', tokens.access);
-      localStorage.setItem('paypulse_refresh_token', tokens.refresh);
-      localStorage.setItem('paypulse_user', JSON.stringify(userData));
-      setUser(userData);
-      return res.data;
+    try {
+      const res = await api.post('/api/auth/register/', registerData);
+      if (res.data?.success) {
+        const { user: userData, tokens } = res.data.data;
+        localStorage.setItem('paypulse_access_token', tokens.access);
+        localStorage.setItem('paypulse_refresh_token', tokens.refresh);
+        localStorage.setItem('paypulse_user', JSON.stringify(userData));
+        setUser(userData);
+        return res.data;
+      }
+      throw new Error(res.data?.message || 'Registration failed.');
+    } catch (err) {
+      const message = err.response?.data?.message || err.message || 'Registration failed.';
+      const customErr = new Error(message);
+      customErr.response = err.response;
+      customErr.errors = err.response?.data?.errors;
+      throw customErr;
     }
-    throw new Error(res.data?.message || 'Registration failed.');
   };
 
   const logout = async () => {

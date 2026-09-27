@@ -18,6 +18,8 @@ class UserManager(BaseUserManager):
         if not email:
             raise ValueError('The Email field must be set')
         email = self.normalize_email(email)
+        if extra_fields.get('phone_number') == '':
+            extra_fields['phone_number'] = None
         user = self.model(username=username.lower().strip(), email=email.lower().strip(), **extra_fields)
         if password:
             user.set_password(password)

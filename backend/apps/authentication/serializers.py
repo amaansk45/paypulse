@@ -2,6 +2,7 @@ import re
 from rest_framework import serializers
 from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.utils import timezone
 from apps.users.models import User
 from .models import OTP, DeviceSession
@@ -10,14 +11,21 @@ from .models import OTP, DeviceSession
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=8)
     confirm_password = serializers.CharField(write_only=True, min_length=8)
-    phone_number = serializers.CharField(required=False, allow_blank=True)
+    phone_number = serializers.CharField(required=False, allow_blank=True, allow_null=True, default=None)
 
     class Meta:
         model = User
         fields = ('id', 'username', 'email', 'phone_number', 'password', 'confirm_password')
+        extra_kwargs = {
+            'phone_number': {'validators': []},
+            'username': {'validators': []},
+            'email': {'validators': []},
+        }
 
     def validate_username(self, value):
-        val = value.strip().lower()
+        val = str(value or '').strip().lower()
+        if len(val) < 3:
+            raise serializers.ValidationError("Username must be at least 3 characters long.")
         if not re.match(r'^[a-zA-Z0-9_.-]+$', val):
             raise serializers.ValidationError("Username can only contain letters, numbers, underscores, and hyphens.")
         if User.objects.filter(username__iexact=val).exists():
@@ -25,20 +33,50 @@ class RegisterSerializer(serializers.ModelSerializer):
         return val
 
     def validate_email(self, value):
-        val = value.strip().lower()
+        val = str(value or '').strip().lower()
+        if not val or '@' not in val:
+            raise serializers.ValidationError("Please provide a valid email address.")
         if User.objects.filter(email__iexact=val).exists():
             raise serializers.ValidationError("A user with this email address already exists.")
+        return val
+
+    def validate_phone_number(self, value):
+        if not value or not str(value).strip():
+            return None
+        val = str(value).strip()
+        if not re.match(r'^\+?[0-9\s\-()]{7,20}$', val):
+            raise serializers.ValidationError("Please provide a valid phone number (digits and optional + prefix).")
+        if User.objects.filter(phone_number=val).exists():
+            raise serializers.ValidationError("A user with this phone number already exists.")
         return val
 
     def validate(self, attrs):
         if attrs.get('password') != attrs.get('confirm_password'):
             raise serializers.ValidationError({"confirm_password": "Passwords do not match."})
-        validate_password(attrs['password'])
+
+        # Validate password using Django's password validators with clear field errors
+        user_for_validation = User(
+            username=attrs.get('username', '').strip(),
+            email=attrs.get('email', '').strip()
+        )
+        try:
+            validate_password(attrs['password'], user=user_for_validation)
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError({"password": list(exc.messages)})
+
+        phone = attrs.get('phone_number')
+        if not phone or not str(phone).strip():
+            attrs['phone_number'] = None
+        else:
+            attrs['phone_number'] = str(phone).strip()
+
         return attrs
 
     def create(self, validated_data):
-        validated_data.pop('confirm_password')
+        validated_data.pop('confirm_password', None)
         password = validated_data.pop('password')
+        if not validated_data.get('phone_number'):
+            validated_data['phone_number'] = None
         user = User.objects.create_user(password=password, **validated_data)
         # Generate initial registration OTP
         OTP.create_otp(identifier=user.email, purpose='REGISTRATION', user=user)
