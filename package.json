@@ -1,0 +1,11 @@
+{
+  "name": "paypulse-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "PayPulse - Enterprise Digital Wallet & Payment Platform",
+  "scripts": {
+    "install:all": "npm --prefix frontend install",
+    "build": "npm --prefix frontend run build",
+    "dev": "npm --prefix frontend run dev"
+  }
+}
