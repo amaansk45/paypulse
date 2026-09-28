@@ -24,8 +24,17 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
     setServerError('');
+
+    if (!currentApiUrl) {
+      const msg = "Backend API is not configured. Please enter your Backend URL in Settings below.";
+      setServerError(msg);
+      showError(msg);
+      setShowServerModal(true);
+      return;
+    }
+
+    setLoading(true);
 
     try {
       const res = await login(username.trim(), password);

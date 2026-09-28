@@ -74,6 +74,14 @@ export default function Register() {
       return;
     }
 
+    if (!currentApiUrl) {
+      const msg = "Backend API is not configured. Please enter your Backend URL in Settings below.";
+      setGeneralError(msg);
+      showError(msg);
+      setShowServerModal(true);
+      return;
+    }
+
     setLoading(true);
     try {
       const payload = {

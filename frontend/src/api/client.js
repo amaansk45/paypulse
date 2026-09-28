@@ -83,8 +83,17 @@ api.interceptors.response.use(
       const currentBase = getApiBaseUrl();
       const message = currentBase
         ? `Cannot connect to backend API server at ${currentBase}. Please verify the server is running and CORS is enabled.`
-        : `Backend API server is not configured. Please enter your Backend URL in Settings or set VITE_API_URL in Vercel.`;
+        : `Backend API server is not configured. Please click 'Settings' at the bottom to configure your Backend URL.`;
 
+      const customError = new Error(message);
+      customError.isNetworkError = true;
+      customError.originalError = error;
+      return Promise.reject(customError);
+    }
+
+    // Handle 404 when API base URL is missing on cloud host (e.g. Vercel)
+    if (error.response?.status === 404 && !getApiBaseUrl()) {
+      const message = "Backend API server is not configured. Please click 'Settings' at the bottom to enter your live Backend URL.";
       const customError = new Error(message);
       customError.isNetworkError = true;
       customError.originalError = error;

@@ -21,6 +21,16 @@ export default function AdminLogin() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setServerError('');
+
+    if (!currentApiUrl) {
+      const msg = "Backend API is not configured. Please enter your Backend URL in Settings below.";
+      setServerError(msg);
+      showError(msg);
+      setShowServerModal(true);
+      return;
+    }
+
     setLoading(true);
 
     try {
